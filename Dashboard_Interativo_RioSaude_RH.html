@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Endomarketing & Cultura — RioSaúde RH</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#1F3864; --blue-dark:#2F5496; --blue:#4472C4; --steel:#5B9BD5;
+    --sky:#8FAADC; --pale:#BDD7EE; --grey:#BFBFBF; --coral:#D9534F; --amber:#E8A33D;
+    --ok:#375623; --bg:#F5F7FB; --card:#FFFFFF; --border:#E3E8F0; --text:#1F2430; --muted:#6B7280;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    background:var(--bg); color:var(--text); padding:24px 28px 60px;
+  }
+  header{margin-bottom:18px;}
+  header h1{margin:0; font-size:1.6rem; color:var(--navy); font-weight:700;}
+  header p{margin:4px 0 0; color:var(--muted); font-size:0.9rem;}
+
+  .banner{
+    padding:14px 18px; border-radius:10px; color:white; font-weight:600;
+    margin:16px 0; font-size:1rem; display:flex; align-items:center; gap:10px;
+  }
+  .banner.red{background:var(--coral);}
+  .banner.green{background:var(--ok);}
+
+  .filters{
+    display:flex; flex-wrap:wrap; gap:12px; background:var(--card); border:1px solid var(--border);
+    border-radius:10px; padding:14px 16px; margin-bottom:20px;
+  }
+  .filter-group{position:relative;}
+  .filter-group label{display:block; font-size:0.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:5px;}
+  .filter-btn{
+    background:#F7F9FC; border:1px solid var(--border); border-radius:7px; padding:8px 12px;
+    font-size:0.85rem; cursor:pointer; min-width:170px; text-align:left; color:var(--text);
+  }
+  .filter-btn:hover{border-color:var(--blue);}
+  .filter-panel{
+    display:none; position:absolute; top:100%; left:0; z-index:20; background:white;
+    border:1px solid var(--border); border-radius:8px; box-shadow:0 6px 18px rgba(31,56,100,.12);
+    padding:8px; margin-top:4px; max-height:220px; overflow-y:auto; min-width:220px;
+  }
+  .filter-panel.open{display:block;}
+  .filter-panel label{display:flex; align-items:center; gap:6px; font-size:0.82rem; font-weight:400;
+    text-transform:none; padding:4px 6px; border-radius:5px; cursor:pointer; color:var(--text);}
+  .filter-panel label:hover{background:#F0F4FA;}
+  .clear-btn{
+    align-self:flex-end; background:none; border:1px solid var(--border); border-radius:7px;
+    padding:8px 14px; font-size:0.82rem; color:var(--blue-dark); cursor:pointer; font-weight:600;
+  }
+  .clear-btn:hover{background:#EEF3FB;}
+
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:10px;}
+  .kpi-card{
+    background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px;
+    text-align:center;
+  }
+  .kpi-card .value{font-size:1.9rem; font-weight:800; color:var(--navy);}
+  .kpi-card .label{font-size:0.78rem; color:var(--muted); margin-top:4px; font-weight:600;}
+  .kpi-card.coral .value{color:var(--coral);}
+  .kpi-card.amber .value{color:var(--amber);}
+  .kpi-card.blue .value{color:var(--blue);}
+
+  section{margin:28px 0 14px;}
+  section > h2{font-size:1.05rem; color:var(--navy); margin:0 0 12px; font-weight:700;}
+  section > p.hint{font-size:0.8rem; color:var(--muted); margin:-6px 0 12px;}
+
+  .grid-2{display:grid; grid-template-columns:2fr 1fr; gap:16px;}
+  .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px;}
+  .card h3{margin:0 0 10px; font-size:0.92rem; color:var(--navy);}
+  canvas{max-width:100%;}
+
+  .gargalo-cards{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+  .gargalo-card{
+    border-radius:10px; padding:14px; border:1px solid var(--border); background:var(--card);
+    border-left:5px solid var(--grey);
+  }
+  .gargalo-card.atrasada{border-left-color:var(--coral); background:#FDF2F1;}
+  .gargalo-card.concluida{border-left-color:var(--ok); background:#F1F6EE;}
+  .gargalo-card .camp{font-weight:700; color:var(--navy); font-size:0.85rem;}
+  .gargalo-card .status{font-size:0.82rem; margin-top:4px;}
+  .gargalo-card .data{font-size:0.75rem; color:var(--muted); margin-top:4px;}
+  .gargalo-msg{
+    margin-top:12px; padding:12px 14px; border-radius:8px; font-size:0.88rem; font-weight:600; color:white;
+  }
+
+  table{width:100%; border-collapse:collapse; font-size:0.83rem;}
+  th, td{padding:8px 10px; text-align:left; border-bottom:1px solid var(--border);}
+  th{background:var(--blue-dark); color:white; font-weight:600; font-size:0.76rem; text-transform:uppercase;}
+  tr:hover td{background:#F7FAFF;}
+  .empty-msg{padding:14px; color:var(--muted); font-size:0.85rem; text-align:center;}
+  .tag-atrasada{color:var(--coral); font-weight:700;}
+  .tag-proxima{color:var(--amber); font-weight:700;}
+
+  footer{margin-top:30px; font-size:0.78rem; color:var(--muted); text-align:center;}
+  @media (max-width:900px){
+    .kpi-row, .grid-2, .grid-3, .gargalo-cards{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📊 Painel de Endomarketing & Cultura — RioSaúde RH</h1>
+  <p>Calendário anual 2026 · execução, prazos, alcance e indicadores de DHO · arquivo único, sem instalação</p>
+</header>
+
+<div id="banner-alerta" class="banner"></div>
+
+<div class="filters">
+  <div class="filter-group">
+    <label>Campanha / Mês</label>
+    <button class="filter-btn" id="btn-campanha" onclick="togglePanel('panel-campanha')">Todas</button>
+    <div class="filter-panel" id="panel-campanha"></div>
+  </div>
+  <div class="filter-group">
+    <label>Responsável</label>
+    <button class="filter-btn" id="btn-responsavel" onclick="togglePanel('panel-responsavel')">Todos</button>
+    <div class="filter-panel" id="panel-responsavel"></div>
+  </div>
+  <div class="filter-group">
+    <label>Canal</label>
+    <button class="filter-btn" id="btn-canal" onclick="togglePanel('panel-canal')">Todos</button>
+    <div class="filter-panel" id="panel-canal"></div>
+  </div>
+  <div class="filter-group">
+    <label>Status</label>
+    <button class="filter-btn" id="btn-status" onclick="togglePanel('panel-status')">Todos</button>
+    <div class="filter-panel" id="panel-status"></div>
+  </div>
+  <button class="clear-btn" onclick="limparFiltros()">✕ Limpar filtros</button>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi-card"><div class="value" id="kpi-total">–</div><div class="label">Total de Ações</div></div>
+  <div class="kpi-card blue"><div class="value" id="kpi-taxa">–</div><div class="label">Taxa de Conclusão</div></div>
+  <div class="kpi-card coral"><div class="value" id="kpi-atrasadas">–</div><div class="label">Ações Atrasadas</div></div>
+  <div class="kpi-card amber"><div class="value" id="kpi-proximas">–</div><div class="label">Próximas 7 dias</div></div>
+</div>
+
+<section>
+  <h2>🧑‍⚕️ Indicadores de DHO (Jan–Set, ano completo)</h2>
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="value" id="dho-turnover-medio">–</div><div class="label">Turnover Médio</div></div>
+    <div class="kpi-card coral"><div class="value" id="dho-turnover-max">–</div><div class="label" id="dho-turnover-max-label">Maior Turnover</div></div>
+    <div class="kpi-card"><div class="value" id="dho-turnover-min">–</div><div class="label" id="dho-turnover-min-label">Menor Turnover</div></div>
+    <div class="kpi-card blue"><div class="value" id="dho-headcount">–</div><div class="label">Perda Líquida de Headcount</div></div>
+  </div>
+</section>
+
+<section class="grid-2">
+  <div class="card">
+    <h3>Funil Padronizado por Campanha — Briefing → Produção → Publicado → Fechamento</h3>
+    <canvas id="chart-funil" height="260"></canvas>
+  </div>
+  <div class="card">
+    <h3>Status Geral das Ações</h3>
+    <canvas id="chart-status" height="260"></canvas>
+  </div>
+</section>
+
+<section>
+  <h2>🔁 Painel de Ações Recorrentes — Alerta de Gargalo ("Indicadores de RH")</h2>
+  <div class="card">
+    <div class="gargalo-cards" id="gargalo-cards"></div>
+    <div class="gargalo-msg" id="gargalo-msg"></div>
+  </div>
+</section>
+
+<section class="grid-2">
+  <div class="card">
+    <h3>Admissões x Desligamentos e Evolução do Headcount</h3>
+    <canvas id="chart-dho" height="260"></canvas>
+  </div>
+  <div class="card">
+    <h3>Turnover Mensal (%)</h3>
+    <canvas id="chart-turnover" height="260"></canvas>
+  </div>
+</section>
+
+<section>
+  <div class="card">
+    <h3>Canais Mais Utilizados (menções nas ações filtradas)</h3>
+    <canvas id="chart-canais" height="220"></canvas>
+  </div>
+</section>
+
+<section class="grid-2">
+  <div class="card">
+    <h3>⚠ Ações Atrasadas</h3>
+    <div id="tabela-atrasadas"></div>
+  </div>
+  <div class="card">
+    <h3>🔜 Próximas Ações (7 dias)</h3>
+    <div id="tabela-proximas"></div>
+  </div>
+</section>
+
+<footer>
+  Painel gerado a partir da planilha Endomarketing & Cultura — RioSaúde RH ·
+  Situação de Prazo recalculada em tempo real com a data do seu dispositivo ao abrir este arquivo.
+  <br><strong>Versão pública</strong> — nomes de responsáveis substituídos por equipe; sem dados individuais de colaboradores.
+</footer>
+
+<script>
+const RAW = {"geradoEm": "2026-09-15T10:39:08.863581", "acoes": [{"campanha": "Janeiro Branco", "lancamento": "2026-01-01", "prioridade": "Média", "status": "Concluído", "topico": "Saúde Mental", "canal": "A definir", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Fevereiro Roxo", "lancamento": "2026-02-06", "prioridade": "Média", "status": "Concluído", "topico": "Lúpus, Fibromialgia e Alzheimer", "canal": "A definir", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Março Azul Escuro", "lancamento": "2026-03-01", "prioridade": "Média", "status": "Concluído", "topico": "Conscientização ao Câncer Colorretal", "canal": "A definir", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Abril Azul", "lancamento": "2026-04-01", "prioridade": "Média", "status": "Concluído", "topico": "Autismo", "canal": "A definir", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Maio Verde", "lancamento": "2026-05-01", "prioridade": "Média", "status": "Concluído", "topico": "Saúde e Bem-Estar do Trabalho", "canal": "A definir", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Junho Laranja", "lancamento": "2026-06-01", "prioridade": "Média", "status": "Concluído", "topico": "Conscientização sobre Anemia e Leucemia", "canal": "A definir", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Julho Amarelo", "lancamento": "2026-07-03", "prioridade": "Alta", "status": "Concluído", "topico": "O silêncio também fala: Você conhece o Julho Amarelo?", "canal": "E-mail Institucional / Mural Físico", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Julho Amarelo", "lancamento": "2026-07-06", "prioridade": "Alta", "status": "Concluído", "topico": "O Alfabeto do Cuidado: Entendendo o A, B e C", "canal": "WhatsApp / TV Principal", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Julho Amarelo", "lancamento": "2026-07-06", "prioridade": "Alta", "status": "Cancelado", "topico": "Indicadores de RH", "canal": "Mural Físico do corredor interno", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "Cancelada", "situacaoPrazo": "Cancelada"}, {"campanha": "Julho Amarelo", "lancamento": "2026-07-08", "prioridade": "Média", "status": "Concluído", "topico": "Cuidado que transborda: O que tem no seu kit pessoal?", "canal": "E-mail Institucional / TV Principal", "responsaveis": "Equipe de RH / Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Julho Amarelo", "lancamento": "2026-07-13", "prioridade": "Média", "status": "Concluído", "topico": "O Julho Amarelo também é assunto de escritório!", "canal": "TV / Mural Físico / E-mail", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Julho Amarelo", "lancamento": "2026-07-20", "prioridade": "Alta", "status": "Concluído", "topico": "Um abraço em forma de gota: Como está a sua vacina?", "canal": "E-mail Institucional / Mural Físico", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Julho Amarelo", "lancamento": "2026-07-22", "prioridade": "Alta", "status": "Concluído", "topico": "O diagnóstico não é o fim. É o começo da cura!", "canal": "E-mail Institucional / TV Principal", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Julho Amarelo", "lancamento": "2026-07-27", "prioridade": "Alta", "status": "Cancelado", "topico": "O preconceito não contagia. A empatia, sim.", "canal": "E-mail Institucional / WhatsApp", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "Cancelada", "situacaoPrazo": "Cancelada"}, {"campanha": "Julho Amarelo", "lancamento": "2026-07-29", "prioridade": "Média", "status": "Cancelado", "topico": "Nossa teia fortalecida: O Julho Amarelo continua em nós!", "canal": "WhatsApp / TV / E-mail / Mural Físico", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "Cancelada", "situacaoPrazo": "Cancelada"}, {"campanha": "Julho Amarelo", "lancamento": "2026-07-27", "prioridade": "Baixa", "status": "Concluído", "topico": "Informe sobre o uso de uniformes não assistenciais", "canal": "TV Principal", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Julho Amarelo", "lancamento": "2026-07-30", "prioridade": "Alta", "status": "Cancelado", "topico": "Dinâmica Presencial: Mito ou Verdade (passa ou repassa)", "canal": "In Loco (Treinamentos / Rondas)", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "Cancelada", "situacaoPrazo": "Cancelada"}, {"campanha": "Julho Amarelo", "lancamento": "2026-08-05", "prioridade": "Média", "status": "Atendido Parcialmente", "topico": "Cobertura: Julho Amarelo", "canal": "Newsletter 'Aconteceu no RH'", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "3. Publicado", "situacaoPrazo": "Atrasada"}, {"campanha": "Agosto Lilás", "lancamento": "2026-08-03", "prioridade": "Alta", "status": "Concluído", "topico": "O silêncio que nos move: O que é o Agosto Lilás?", "canal": "E-mail Institucional / Mural Físico", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Agosto Lilás", "lancamento": "2026-08-05", "prioridade": "Média", "status": "Concluído", "topico": "Violência não tem só uma face: Você conhece os tipos?", "canal": "WhatsApp / TV Principal / Mural Físico", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Agosto Lilás", "lancamento": "2026-08-05", "prioridade": "Alta", "status": "Entregue Fora do Prazo", "topico": "Indicadores de RH", "canal": "Mural Físico do corredor interno", "responsaveis": "Equipe de Endomarketing / Equipe de RH", "fasePadrao": "3. Publicado", "situacaoPrazo": "Atrasada"}, {"campanha": "Agosto Lilás", "lancamento": "2026-08-10", "prioridade": "Média", "status": "Concluído", "topico": "Na rede pública, seus direitos são garantidos!", "canal": "E-mail Institucional / TV Principal / WhatsApp", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Agosto Lilás", "lancamento": "2026-08-13", "prioridade": "Alta", "status": "Concluído", "topico": "Mesa Redonda: Direitos da Mulher e Rede de Proteção Pública", "canal": "In Loco (Auditório HMRG) / WhatsApp / E-mail", "responsaveis": "Equipe de Endomarketing / Equipe de Gestão RH / Alta Gestão", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Agosto Lilás", "lancamento": "2026-08-17", "prioridade": "Alta", "status": "Concluído", "topico": "O ciclo da violência e a importância da rede de apoio", "canal": "E-mail Institucional / WhatsApp / TV Principal", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Agosto Lilás", "lancamento": "2026-08-19", "prioridade": "Média", "status": "Concluído", "topico": "Autocuidado e Autoestima como ferramentas de defesa", "canal": "WhatsApp / TV Principal", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Agosto Lilás", "lancamento": "2026-08-24", "prioridade": "Alta", "status": "Concluído", "topico": "Nossa teia fortalecida: Rondas setoriais e entrega de brindes", "canal": "In Loco (Todos os setores do HMRG) / WhatsApp", "responsaveis": "Equipe de Endomarketing / Equipe de Liderança", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Agosto Lilás", "lancamento": "2026-08-26", "prioridade": "Média", "status": "Concluído", "topico": "Mito ou Verdade: O que a sociedade ainda erra sobre a violência contra a mulher?", "canal": "E-mail Institucional / WhatsApp", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Agosto Lilás", "lancamento": "2026-09-03", "prioridade": "Média", "status": "Concluído", "topico": "Cobertura Especial: O Agosto Lilás no HMRG", "canal": "Newsletter 'Aconteceu no RH'", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "4. Fechamento", "situacaoPrazo": "Concluída"}, {"campanha": "Setembro (Espelho)", "lancamento": "2026-09-02", "prioridade": "Alta", "status": "Em andamento", "topico": "O reflexo que nos move: É hora de cuidar do cuidado.", "canal": "E-mail Institucional / Mural Físico / WhatsApp", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "2. Produção", "situacaoPrazo": "Atrasada"}, {"campanha": "Setembro (Espelho)", "lancamento": "2026-09-09", "prioridade": "Média", "status": "Briefing", "topico": "Na nossa teia, você não está só: A Rede Municipal", "canal": "E-mail Institucional / TV Principal / WhatsApp", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "1. Briefing", "situacaoPrazo": "Atrasada"}, {"campanha": "Setembro (Espelho)", "lancamento": "2026-09-10", "prioridade": "Alta", "status": "Briefing", "topico": "Indicadores de RH", "canal": "Mural Físico do corredor interno", "responsaveis": "Equipe de Endomarketing / Equipe de RH", "fasePadrao": "1. Briefing", "situacaoPrazo": "Atrasada"}, {"campanha": "Setembro (Espelho)", "lancamento": "2026-09-16", "prioridade": "Alta", "status": "Briefing", "topico": "Mesa Redonda: A Linha Tênue de Quem Cuida", "canal": "In Loco (Auditório HMRG) / WhatsApp / E-mail", "responsaveis": "Equipe de Endomarketing / Equipe de Gestão RH / Alta Gestão", "fasePadrao": "1. Briefing", "situacaoPrazo": "Próxima 7 dias"}, {"campanha": "Setembro (Espelho)", "lancamento": "2026-09-23", "prioridade": "Alta", "status": "Briefing", "topico": "RH Itinerante: A Escuta Ativa chega até você", "canal": "In Loco (Todos os setores do HMRG) / WhatsApp", "responsaveis": "Equipe de Endomarketing / Equipe de Liderança", "fasePadrao": "1. Briefing", "situacaoPrazo": "No Prazo"}, {"campanha": "Setembro (Espelho)", "lancamento": "2026-09-28", "prioridade": "Média", "status": "Briefing", "topico": "Mito ou Verdade: A armadura invisível do profissional", "canal": "E-mail Institucional / WhatsApp", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "1. Briefing", "situacaoPrazo": "No Prazo"}, {"campanha": "Setembro (Espelho)", "lancamento": "2026-09-30", "prioridade": "Média", "status": "Briefing", "topico": "Cobertura Especial: O Setembro no Nosso Espelho", "canal": "Newsletter 'Aconteceu no RH'", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "1. Briefing", "situacaoPrazo": "No Prazo"}, {"campanha": "Outubro Rosa", "lancamento": null, "prioridade": "Média", "status": "Aguardando", "topico": "Câncer de Mama", "canal": "A definir", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "1. Briefing", "situacaoPrazo": "No Prazo"}, {"campanha": "Novembro Azul", "lancamento": null, "prioridade": "Média", "status": "Aguardando", "topico": "Conscientização sobre a Saúde do Homem", "canal": "A definir", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "1. Briefing", "situacaoPrazo": "No Prazo"}, {"campanha": "Dezembro Vermelho", "lancamento": null, "prioridade": "Média", "status": "Aguardando", "topico": "Prevenção contra o HIV/ISTs", "canal": "A definir", "responsaveis": "Equipe de Endomarketing", "fasePadrao": "1. Briefing", "situacaoPrazo": "No Prazo"}], "dho": [{"mes": "JAN", "admissoes": 42.0, "desligamentos": 84.0, "headcount": 3370.0, "turnover": 0.018694362017804153, "absenteismo": 1890.0}, {"mes": "FEV", "admissoes": 30.0, "desligamentos": 72.0, "headcount": 3328.0, "turnover": 0.01532451923076923, "absenteismo": 1829.0}, {"mes": "MAR", "admissoes": 63.0, "desligamentos": 187.0, "headcount": 3204.0, "turnover": 0.03901373283395755, "absenteismo": 2055.0}, {"mes": "ABR", "admissoes": 48.0, "desligamentos": 148.0, "headcount": 3104.0, "turnover": 0.03157216494845361, "absenteismo": 1915.0}, {"mes": "MAI", "admissoes": 55.0, "desligamentos": 156.0, "headcount": 3003.0, "turnover": 0.03513153513153513, "absenteismo": 2025.0}, {"mes": "JUN", "admissoes": 132.0, "desligamentos": 215.0, "headcount": 2920.0, "turnover": 0.05941780821917808, "absenteismo": 1844.0}, {"mes": "JUL", "admissoes": 39.0, "desligamentos": 64.0, "headcount": 2895.0, "turnover": 0.01778929188255613, "absenteismo": 1819.0}, {"mes": "AGO", "admissoes": 16.0, "desligamentos": 15.0, "headcount": 2927.0, "turnover": 0.005295524427741715, "absenteismo": 2071.0}, {"mes": "SET", "admissoes": 46.0, "desligamentos": 46.0, "headcount": 2900.0, "turnover": 0.015862068965517243, "absenteismo": 160.0}]};
+
+const FASES = ["1. Briefing","2. Produção","3. Publicado","4. Fechamento","Cancelada"];
+const FASE_CORES = {"1. Briefing":"#BDD7EE","2. Produção":"#8FAADC","3. Publicado":"#4472C4","4. Fechamento":"#1F3864","Cancelada":"#BFBFBF"};
+const STATUS_CORES = ["#1F3864","#2F5496","#4472C4","#5B9BD5","#8FAADC","#BFBFBF","#BDD7EE","#E8A33D"];
+const CANAIS_PADRAO = ["E-mail","WhatsApp","TV","Mural","In Loco","Newsletter"];
+
+// -----------------------------------------------------------------
+// Recalcula Situação de Prazo com a data REAL de hoje (não a data em que
+// os dados foram exportados) — mesma regra usada no Excel e no app Python.
+// -----------------------------------------------------------------
+function classificarPrazo(acao){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  if(acao.status === "Concluído") return "Concluída";
+  if(acao.status === "Cancelado") return "Cancelada";
+  if(!acao.lancamento) return "No Prazo";
+  const lanc = new Date(acao.lancamento + "T00:00:00");
+  const seteDias = new Date(hoje); seteDias.setDate(hoje.getDate()+7);
+  if(lanc < hoje) return "Atrasada";
+  if(lanc <= seteDias) return "Próxima 7 dias";
+  return "No Prazo";
+}
+
+const ACOES = RAW.acoes.map(a => Object.assign({}, a, {situacaoPrazo: classificarPrazo(a)}));
+const DHO = RAW.dho;
+
+// -----------------------------------------------------------------
+// Estado dos filtros
+// -----------------------------------------------------------------
+const filtros = { campanha:new Set(), responsavel:new Set(), canal:new Set(), status:new Set() };
+
+function valoresUnicos(campo){
+  if(campo === "responsavel"){
+    const set = new Set();
+    ACOES.forEach(a => (a.responsaveis||"").split("/").forEach(r => { const t=r.trim(); if(t) set.add(t); }));
+    return [...set].sort();
+  }
+  if(campo === "canal") return CANAIS_PADRAO;
+  if(campo === "campanha") return [...new Set(ACOES.map(a=>a.campanha))];
+  if(campo === "status") return [...new Set(ACOES.map(a=>a.status))].sort();
+  return [];
+}
+
+function montarPainelFiltro(campo, panelId, btnId, labelTodos){
+  const panel = document.getElementById(panelId);
+  panel.innerHTML = "";
+  valoresUnicos(campo).forEach(valor => {
+    const id = panelId + "-" + valor.replace(/[^a-zA-Z0-9]/g,"_");
+    const lab = document.createElement("label");
+    lab.innerHTML = `<input type="checkbox" id="${id}" value="${valor}"> ${valor}`;
+    lab.querySelector("input").addEventListener("change", e => {
+      if(e.target.checked) filtros[campo].add(valor); else filtros[campo].delete(valor);
+      atualizarBotaoFiltro(campo, btnId, labelTodos);
+      renderTudo();
+    });
+    panel.appendChild(lab);
+  });
+}
+
+function atualizarBotaoFiltro(campo, btnId, labelTodos){
+  const btn = document.getElementById(btnId);
+  const n = filtros[campo].size;
+  btn.textContent = n === 0 ? labelTodos : `${n} selecionado(s)`;
+}
+
+function togglePanel(panelId){
+  document.querySelectorAll(".filter-panel").forEach(p => { if(p.id !== panelId) p.classList.remove("open"); });
+  document.getElementById(panelId).classList.toggle("open");
+}
+document.addEventListener("click", e => {
+  if(!e.target.closest(".filter-group")) document.querySelectorAll(".filter-panel").forEach(p=>p.classList.remove("open"));
+});
+
+function limparFiltros(){
+  Object.keys(filtros).forEach(k => filtros[k].clear());
+  document.querySelectorAll(".filter-panel input[type=checkbox]").forEach(cb => cb.checked = false);
+  atualizarBotaoFiltro("campanha","btn-campanha","Todas");
+  atualizarBotaoFiltro("responsavel","btn-responsavel","Todos");
+  atualizarBotaoFiltro("canal","btn-canal","Todos");
+  atualizarBotaoFiltro("status","btn-status","Todos");
+  renderTudo();
+}
+
+function acoesFiltradas(){
+  return ACOES.filter(a => {
+    if(filtros.campanha.size && !filtros.campanha.has(a.campanha)) return false;
+    if(filtros.status.size && !filtros.status.has(a.status)) return false;
+    if(filtros.responsavel.size){
+      const resp = (a.responsaveis||"");
+      let ok = false;
+      filtros.responsavel.forEach(r => { if(resp.includes(r)) ok = true; });
+      if(!ok) return false;
+    }
+    if(filtros.canal.size){
+      const canal = (a.canal||"");
+      let ok = false;
+      filtros.canal.forEach(c => { if(canal.toLowerCase().includes(c.toLowerCase())) ok = true; });
+      if(!ok) return false;
+    }
+    return true;
+  });
+}
+
+// -----------------------------------------------------------------
+// Gráficos (instâncias globais para poder destruir/recriar ao filtrar)
+// -----------------------------------------------------------------
+let chartFunil, chartStatus, chartDho, chartTurnover, chartCanais;
+
+function renderBanner(acoes){
+  const altaAtrasada = acoes.filter(a => a.prioridade === "Alta" && a.situacaoPrazo === "Atrasada").length;
+  const el = document.getElementById("banner-alerta");
+  if(altaAtrasada > 0){
+    el.className = "banner red";
+    el.textContent = `🚨 ${altaAtrasada} ação(ões) de ALTA prioridade está(ão) atrasada(s) — priorize agora.`;
+  } else {
+    el.className = "banner green";
+    el.textContent = "✅ Nenhuma ação de alta prioridade atrasada no momento.";
+  }
+}
+
+function renderKpis(acoes){
+  const total = acoes.length;
+  const concluidas = acoes.filter(a => a.status === "Concluído").length;
+  const atrasadas = acoes.filter(a => a.situacaoPrazo === "Atrasada").length;
+  const proximas = acoes.filter(a => a.situacaoPrazo === "Próxima 7 dias").length;
+  document.getElementById("kpi-total").textContent = total;
+  document.getElementById("kpi-taxa").textContent = total ? (100*concluidas/total).toFixed(1)+"%" : "–";
+  document.getElementById("kpi-atrasadas").textContent = atrasadas;
+  document.getElementById("kpi-proximas").textContent = proximas;
+}
+
+function renderDhoKpis(){
+  if(!DHO.length) return;
+  const turnovers = DHO.map(d=>d.turnover);
+  const media = turnovers.reduce((a,b)=>a+b,0)/turnovers.length;
+  const maxV = Math.max(...turnovers), minV = Math.min(...turnovers);
+  const mesMax = DHO[turnovers.indexOf(maxV)].mes, mesMin = DHO[turnovers.indexOf(minV)].mes;
+  const perdaLiquida = DHO[DHO.length-1].headcount - DHO[0].headcount;
+  const perdaPct = perdaLiquida / DHO[0].headcount;
+  document.getElementById("dho-turnover-medio").textContent = (media*100).toFixed(2)+"%";
+  document.getElementById("dho-turnover-max").textContent = (maxV*100).toFixed(2)+"%";
+  document.getElementById("dho-turnover-max-label").textContent = "Maior Turnover ("+mesMax+")";
+  document.getElementById("dho-turnover-min").textContent = (minV*100).toFixed(2)+"%";
+  document.getElementById("dho-turnover-min-label").textContent = "Menor Turnover ("+mesMin+")";
+  document.getElementById("dho-headcount").textContent = (perdaLiquida>=0?"+":"")+perdaLiquida+" ("+(perdaPct*100).toFixed(1)+"%)";
+}
+
+function renderFunil(acoes){
+  if(typeof Chart === "undefined") return avisoChartIndisponivel("chart-funil");
+  const campanhas = [...new Set(acoes.map(a=>a.campanha))];
+  const datasets = FASES.map(fase => ({
+    label: fase, backgroundColor: FASE_CORES[fase],
+    data: campanhas.map(c => acoes.filter(a=>a.campanha===c && a.fasePadrao===fase).length),
+  }));
+  try {
+    if(chartFunil) chartFunil.destroy();
+    chartFunil = new Chart(document.getElementById("chart-funil"), {
+      type: "bar",
+      data: { labels: campanhas, datasets },
+      options: {
+        indexAxis: "y", responsive:true,
+        scales: { x:{stacked:true}, y:{stacked:true} },
+        plugins:{ legend:{position:"bottom", labels:{boxWidth:12,font:{size:11}}} },
+      },
+    });
+  } catch(e) { console.error("Falha ao desenhar funil:", e); avisoChartIndisponivel("chart-funil"); }
+}
+
+function renderStatus(acoes){
+  if(typeof Chart === "undefined") return avisoChartIndisponivel("chart-status");
+  const counts = {};
+  acoes.forEach(a => counts[a.status] = (counts[a.status]||0)+1);
+  const labels = Object.keys(counts);
+  try {
+    if(chartStatus) chartStatus.destroy();
+    chartStatus = new Chart(document.getElementById("chart-status"), {
+      type: "doughnut",
+      data: { labels, datasets: [{ data: labels.map(l=>counts[l]), backgroundColor: STATUS_CORES }] },
+      options: { plugins:{ legend:{position:"bottom", labels:{boxWidth:12,font:{size:11}}} } },
+    });
+  } catch(e) { console.error("Falha ao desenhar status:", e); avisoChartIndisponivel("chart-status"); }
+}
+
+function renderGargalo(){
+  const ocorrencias = ACOES.filter(a => a.topico === "Indicadores de RH")
+    .map(a => Object.assign({}, a, {situacaoPrazo: classificarPrazo(a)}))
+    .sort((a,b) => (a.lancamento||"").localeCompare(b.lancamento||""));
+  const cont = document.getElementById("gargalo-cards");
+  cont.innerHTML = "";
+  ocorrencias.forEach(o => {
+    const cls = o.situacaoPrazo === "Atrasada" ? "atrasada" : (o.situacaoPrazo === "Concluída" ? "concluida" : "");
+    const div = document.createElement("div");
+    div.className = "gargalo-card " + cls;
+    div.innerHTML = `<div class="camp">${o.campanha}</div>
+      <div class="status">${o.status} · <strong>${o.situacaoPrazo}</strong></div>
+      <div class="data">Lançamento: ${o.lancamento ? formatarData(o.lancamento) : "—"}</div>
+      <div class="data">${o.responsaveis}</div>`;
+    cont.appendChild(div);
+  });
+  const atrasadas = ocorrencias.filter(o=>o.situacaoPrazo==="Atrasada").length;
+  const total = ocorrencias.length;
+  const msgEl = document.getElementById("gargalo-msg");
+  if(atrasadas >= 2){
+    msgEl.style.background = "var(--coral)";
+    msgEl.textContent = `🚨 Gargalo confirmado: atrasou em ${atrasadas} das ${total} campanhas em que aparece. Recomenda-se fixar um dono único e um prazo D-3 antes do lançamento, fora do fluxo do Canva.`;
+  } else if(atrasadas === 1){
+    msgEl.style.background = "var(--amber)";
+    msgEl.textContent = `⚠ Atenção: atrasou em ${atrasadas} das ${total} campanhas — ainda não é padrão, mas vale monitorar.`;
+  } else {
+    msgEl.style.background = "var(--ok)";
+    msgEl.textContent = "✅ Sem atrasos registrados para esta ação recorrente.";
+  }
+}
+
+function renderDho(){
+  if(!DHO.length) return;
+  const meses = DHO.map(d=>d.mes);
+  if(typeof Chart === "undefined"){ avisoChartIndisponivel("chart-dho"); avisoChartIndisponivel("chart-turnover"); return; }
+  try {
+    if(chartDho) chartDho.destroy();
+    chartDho = new Chart(document.getElementById("chart-dho"), {
+      data: {
+        labels: meses,
+        datasets: [
+          { type:"bar", label:"Admissões", data: DHO.map(d=>d.admissoes), backgroundColor:"#8FAADC", yAxisID:"y" },
+          { type:"bar", label:"Desligamentos", data: DHO.map(d=>d.desligamentos), backgroundColor:"#D9534F", yAxisID:"y" },
+          { type:"line", label:"Headcount", data: DHO.map(d=>d.headcount), borderColor:"#1F3864", backgroundColor:"#1F3864",
+            borderWidth:3, yAxisID:"y1", tension:0.25 },
+        ],
+      },
+      options: {
+        responsive:true,
+        scales: {
+          y: { type:"linear", position:"left", title:{display:true,text:"Admissões/Desligamentos"} },
+          y1: { type:"linear", position:"right", grid:{drawOnChartArea:false}, title:{display:true,text:"Headcount"} },
+        },
+        plugins:{ legend:{position:"bottom", labels:{boxWidth:12,font:{size:11}}} },
+      },
+    });
+  } catch(e) { console.error("Falha ao desenhar DHO:", e); avisoChartIndisponivel("chart-dho"); }
+
+  try {
+    if(chartTurnover) chartTurnover.destroy();
+    chartTurnover = new Chart(document.getElementById("chart-turnover"), {
+      type: "line",
+      data: { labels: meses, datasets: [{
+        label:"Turnover (%)", data: DHO.map(d=>d.turnover*100),
+        borderColor:"#4472C4", backgroundColor:"rgba(68,114,196,0.15)", fill:true, tension:0.3, pointBackgroundColor:"#1F3864",
+      }]},
+      options: { plugins:{legend:{display:false}}, scales:{ y:{ ticks:{ callback:v=>v.toFixed(1)+"%" } } } },
+    });
+  } catch(e) { console.error("Falha ao desenhar turnover:", e); avisoChartIndisponivel("chart-turnover"); }
+}
+
+function renderCanais(acoes){
+  if(typeof Chart === "undefined") return avisoChartIndisponivel("chart-canais");
+  const counts = {};
+  CANAIS_PADRAO.forEach(c => counts[c] = acoes.filter(a => (a.canal||"").toLowerCase().includes(c.toLowerCase())).length);
+  const labels = Object.keys(counts).sort((a,b)=>counts[a]-counts[b]);
+  try {
+    if(chartCanais) chartCanais.destroy();
+    chartCanais = new Chart(document.getElementById("chart-canais"), {
+      type: "bar",
+      data: { labels, datasets: [{ label:"Menções", data: labels.map(l=>counts[l]), backgroundColor:"#5B9BD5" }] },
+      options: { indexAxis:"y", plugins:{legend:{display:false}} },
+    });
+  } catch(e) { console.error("Falha ao desenhar canais:", e); avisoChartIndisponivel("chart-canais"); }
+}
+
+function avisoChartIndisponivel(canvasId){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas.parentNode) return;
+  const existente = canvas.parentNode.querySelector(".chart-fallback-msg");
+  if(existente) return; // já avisado — não empilha mensagem a cada filtro
+  const aviso = document.createElement("div");
+  aviso.className = "empty-msg chart-fallback-msg";
+  aviso.textContent = "⚠ Não foi possível carregar a biblioteca de gráficos (Chart.js) — verifique sua conexão com a internet. Os números acima continuam corretos.";
+  canvas.parentNode.appendChild(aviso);
+}
+
+function formatarData(iso){
+  const [y,m,d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function renderTabela(elId, linhas, vazio){
+  const el = document.getElementById(elId);
+  if(!linhas.length){ el.innerHTML = `<div class="empty-msg">${vazio}</div>`; return; }
+  let html = "<table><thead><tr><th>Campanha</th><th>Ação</th><th>Responsável</th><th>Lançamento</th></tr></thead><tbody>";
+  linhas.forEach(a => {
+    html += `<tr><td>${a.campanha}</td><td>${a.topico}</td><td>${a.responsaveis}</td><td>${a.lancamento?formatarData(a.lancamento):"—"}</td></tr>`;
+  });
+  html += "</tbody></table>";
+  el.innerHTML = html;
+}
+
+function renderTabelas(acoes){
+  const atrasadas = acoes.filter(a=>a.situacaoPrazo==="Atrasada").sort((a,b)=>(a.lancamento||"").localeCompare(b.lancamento||""));
+  const proximas = acoes.filter(a=>a.situacaoPrazo==="Próxima 7 dias").sort((a,b)=>(a.lancamento||"").localeCompare(b.lancamento||""));
+  renderTabela("tabela-atrasadas", atrasadas, "Nenhuma ação atrasada nos filtros atuais.");
+  renderTabela("tabela-proximas", proximas, "Nenhuma ação prevista para os próximos 7 dias.");
+}
+
+function renderTudo(){
+  const acoes = acoesFiltradas();
+  renderBanner(acoes);
+  renderKpis(acoes);
+  renderFunil(acoes);
+  renderStatus(acoes);
+  renderCanais(acoes);
+  renderTabelas(acoes);
+}
+
+// -----------------------------------------------------------------
+// Inicialização
+// -----------------------------------------------------------------
+montarPainelFiltro("campanha","panel-campanha","btn-campanha","Todas");
+montarPainelFiltro("responsavel","panel-responsavel","btn-responsavel","Todos");
+montarPainelFiltro("canal","panel-canal","btn-canal","Todos");
+montarPainelFiltro("status","panel-status","btn-status","Todos");
+
+renderDhoKpis();
+renderGargalo();
+renderDho();
+renderTudo();
+</script>
+</body>
+</html>

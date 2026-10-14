@@ -268,6 +268,12 @@
   .carousel-dot{background:rgba(255,255,255,.38);}
   .carousel-dot.active{background:#f4d35e; transform:scale(1.3);}
   body::before{background:linear-gradient(90deg,#f4d35e,#42b9eb 40%,#ffffff);}
+  /* ===== Gráficos: caixas de altura fixa e grades que não estouram a largura ===== */
+  .chart-box{position:relative; width:100%; height:var(--h,300px);}
+  .chart-box canvas{max-width:100%;}
+  .grid-2 > *, .grid-eq > *{min-width:0;}
+  .grid-2, .grid-eq{align-items:stretch;}
+  @media (max-width:640px){ .chart-box{height:min(var(--h,300px), 340px);} }
   @media print{
     body{background:#FFFFFF !important;}
     header h1, header p, section > h2, .news-section h2, section > p.hint, .meta-evid, footer, footer strong{color:#1F2430 !important;}
@@ -377,11 +383,11 @@
 <section id="sec-funil" class="grid-2">
   <div class="card">
     <h3>Funil Padronizado por Campanha — Briefing → Produção → Publicado → Fechamento</h3>
-    <canvas id="chart-funil" height="260"></canvas>
+    <div class="chart-box" style="--h:420px"><canvas id="chart-funil"></canvas></div>
   </div>
   <div class="card">
     <h3>Status Geral das Ações</h3>
-    <canvas id="chart-status" height="260"></canvas>
+    <div class="chart-box" style="--h:420px"><canvas id="chart-status"></canvas></div>
   </div>
 </section>
 
@@ -389,18 +395,18 @@
   <h2>📈 Progresso Acumulado do Ano</h2>
   <p class="hint">Percentual de ações concluídas, mês a mês — a linha pontilhada mostra a meta linear (100% em dezembro) para comparação.</p>
   <div class="card">
-    <canvas id="chart-progresso" height="140"></canvas>
+    <div class="chart-box" style="--h:300px"><canvas id="chart-progresso"></canvas></div>
   </div>
 </section>
 
 <section id="sec-alcance" class="grid-2">
   <div class="card">
     <h3>Alcance por Campanha (pessoas) e Taxa de Abertura Média (%)</h3>
-    <canvas id="chart-alcance" height="260"></canvas>
+    <div class="chart-box" style="--h:340px"><canvas id="chart-alcance"></canvas></div>
   </div>
   <div class="card">
     <h3>Ações por Prioridade</h3>
-    <canvas id="chart-prioridade" height="260"></canvas>
+    <div class="chart-box" style="--h:340px"><canvas id="chart-prioridade"></canvas></div>
   </div>
 </section>
 
@@ -416,8 +422,8 @@
   <p class="meta-evid" id="evid-meta"></p>
   <div id="evid-alerta" class="banner amber" style="margin:0 0 16px;"></div>
   <div class="grid-eq">
-    <div class="card"><h3>Ações por Tipo de Evento</h3><canvas id="chart-evid-tipo" height="200"></canvas></div>
-    <div class="card"><h3>Ações por Local</h3><canvas id="chart-evid-local" height="200"></canvas></div>
+    <div class="card"><h3>Ações por Tipo de Evento</h3><div class="chart-box" style="--h:280px"><canvas id="chart-evid-tipo"></canvas></div></div>
+    <div class="card"><h3>Ações por Local</h3><div class="chart-box" style="--h:280px"><canvas id="chart-evid-local"></canvas></div></div>
   </div>
   <div class="card" style="margin-top:16px;"><h3>Controle de Ações — situação de ata e evidência</h3><div id="tabela-evid"></div></div>
 </section>
@@ -433,25 +439,25 @@
 <section class="grid-2">
   <div class="card">
     <h3>Admissões x Desligamentos e Evolução do Headcount</h3>
-    <canvas id="chart-dho" height="260"></canvas>
+    <div class="chart-box" style="--h:340px"><canvas id="chart-dho"></canvas></div>
   </div>
   <div class="card">
     <h3>Turnover Mensal (%)</h3>
-    <canvas id="chart-turnover" height="260"></canvas>
+    <div class="chart-box" style="--h:340px"><canvas id="chart-turnover"></canvas></div>
   </div>
 </section>
 
 <section>
   <div class="card">
     <h3>Absenteísmo Mensal (horas) — Jan a Out/2026</h3>
-    <canvas id="chart-absenteismo" height="150"></canvas>
+    <div class="chart-box" style="--h:300px"><canvas id="chart-absenteismo"></canvas></div>
   </div>
 </section>
 
 <section>
   <div class="card">
     <h3>Canais Mais Utilizados (menções nas ações filtradas)</h3>
-    <canvas id="chart-canais" height="220"></canvas>
+    <div class="chart-box" style="--h:280px"><canvas id="chart-canais"></canvas></div>
   </div>
 </section>
 
@@ -557,7 +563,8 @@ const DICAS_GRAFICOS = {
 function aplicarDicasGraficos(){
   Object.keys(DICAS_GRAFICOS).forEach(id => {
     const c = document.getElementById(id);
-    const h3 = c && c.parentNode && c.parentNode.querySelector ? c.parentNode.querySelector("h3") : null;
+    const card = c && c.parentNode && c.parentNode.parentNode;
+    const h3 = card && card.querySelector ? card.querySelector("h3") : null;
     if(h3){ h3.setAttribute("data-tip-title", DICAS_GRAFICOS[id][0]); h3.setAttribute("data-tip", DICAS_GRAFICOS[id][1]); }
   });
 }
@@ -1451,6 +1458,7 @@ const DATALABELS_URLS = [
 ];
 
 function iniciarPainel(){
+  if(typeof Chart !== "undefined"){ Chart.defaults.maintainAspectRatio = false; Chart.defaults.responsive = true; }
   if(typeof Chart !== "undefined" && typeof ChartDataLabels !== "undefined"){
     Chart.register(ChartDataLabels);
     Chart.defaults.set("plugins.datalabels", { display: false });
